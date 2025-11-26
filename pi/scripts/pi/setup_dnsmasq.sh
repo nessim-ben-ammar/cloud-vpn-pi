@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Script to setup dnsmasq as a dedicated DNS forwarder on Raspberry Pi
-# Router keeps DHCP enabled; point router DNS to the Pi so all clients use it
+# Script to setup dnsmasq as DHCP + DNS forwarder on Raspberry Pi
+# Router DHCP should be disabled so the Pi can advertise itself as gateway + DNS
 # Usage: ./setup_dnsmasq.sh
 
 set -e
@@ -22,11 +22,11 @@ else
     exit 1
 fi
 
-echo "Setting up dnsmasq DNS forwarder on Raspberry Pi..."
-echo "This will configure the Pi to answer DNS queries for your network"
+echo "Setting up dnsmasq DHCP + DNS forwarder on Raspberry Pi..."
+echo "This will configure the Pi as DHCP server, gateway, and DNS forwarder"
 echo ""
 
-echo "Configuring dnsmasq DNS server..."
+echo "Configuring dnsmasq services..."
 
 # Check if dnsmasq is installed
 if ! command -v dnsmasq >/dev/null 2>&1; then
@@ -59,13 +59,34 @@ interface=$LAN_INTERFACE
 bind-interfaces
 listen-address=$PI_IP,127.0.0.1
 
-# DNS settings
+# DHCP range - devices will get IPs in this range
+# Make sure router DHCP is disabled to avoid conflicts
+dhcp-range=$DHCP_RANGE_START,$DHCP_RANGE_END,$SUBNET_MASK,$DHCP_LEASE_TIME
+
+# Gateway option - Pi itself
+dhcp-option=3,$PI_IP
+
+# DNS option - Pi itself so queries stay local and forward upstream through dnsmasq
+dhcp-option=6,$PI_IP
+
+# Domain name
+domain=$DOMAIN_NAME
+
+# Enable DHCP logging
+log-dhcp
+
+# Cache size
+cache-size=1000
+
+# Don't read /etc/resolv.conf
 no-resolv
 server=$UPSTREAM_DNS_SERVER
 cache-size=1000
 
-# Domain name for local queries
-domain=$DOMAIN_NAME
+# Upstream DNS server(s) dnsmasq will forward to
+server=$UPSTREAM_DNS_SERVER
+
+# Don't forward plain names
 domain-needed
 bogus-priv
 
@@ -74,7 +95,7 @@ no-dhcp-interface=$LAN_INTERFACE
 
 DNSMASQ_EOF
 
-echo "✅ dnsmasq DNS configuration created"
+echo "✅ dnsmasq DHCP + DNS configuration created"
 
 # Configure Pi's static IP (ensure it's static)
 echo "🔧 Configuring Pi's static IP..."
@@ -111,5 +132,8 @@ echo "📊 dnsmasq status:"
 systemctl status dnsmasq --no-pager -l
 
 echo ""
+echo "📋 Active DHCP leases:"
+cat /var/lib/misc/dnsmasq.leases 2>/dev/null || echo "No leases yet"
+
 echo ""
-echo "✅ dnsmasq DNS server setup completed!"
+echo "✅ dnsmasq DHCP + DNS server setup completed!"

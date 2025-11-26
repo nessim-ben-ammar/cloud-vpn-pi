@@ -4,6 +4,9 @@
 # Network Configuration
 PI_IP="192.168.178.2"
 ROUTER_IP="192.168.178.1"
+DHCP_RANGE_START="192.168.178.20"
+DHCP_RANGE_END="192.168.178.200"
+DHCP_LEASE_TIME="24h"
 
 # SSH Configuration
 SSH_KEY="/workspaces/cloud-vpn-pi/pi/ssh_keys/pi_ssh_key"
@@ -17,8 +20,7 @@ WG_CONFIG_DEST="/etc/wireguard/vpn-pi.conf"   # Destination path on Pi
 WG_INTERFACE="wg0"
 
 # DNS Configuration
-# Upstream resolver that dnsmasq forwards to. Point your router's DNS setting at the Pi
-# so clients use this server.
+# Upstream resolver that dnsmasq forwards to while the Pi serves local DNS
 UPSTREAM_DNS_SERVER="192.168.2.1"
 DOMAIN_NAME="local"
 
