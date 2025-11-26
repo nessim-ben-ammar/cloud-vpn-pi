@@ -51,7 +51,7 @@ cp /etc/dnsmasq.conf /etc/dnsmasq.conf.backup 2>/dev/null || true
 # Create new dnsmasq configuration
 echo "📝 Creating dnsmasq configuration..."
 cat > /etc/dnsmasq.conf << DNSMASQ_EOF
-# dnsmasq configuration for Pi Gateway with VPN
+# dnsmasq configuration for Pi DNS forwarder
 # Interface to bind to (Pi's ethernet interface)
 interface=$LAN_INTERFACE
 
@@ -80,15 +80,18 @@ cache-size=1000
 
 # Don't read /etc/resolv.conf
 no-resolv
+server=$UPSTREAM_DNS_SERVER
+cache-size=1000
 
 # Upstream DNS server(s) dnsmasq will forward to
 server=$UPSTREAM_DNS_SERVER
 
 # Don't forward plain names
 domain-needed
-
-# Don't forward addresses in the non-routed address spaces
 bogus-priv
+
+# Do NOT provide DHCP; router remains DHCP server
+no-dhcp-interface=$LAN_INTERFACE
 
 DNSMASQ_EOF
 
