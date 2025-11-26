@@ -2,7 +2,7 @@
 
 # PI SCRIPT - Switch Pi gateway from VPN to normal internet
 # This script runs ON the PI to switch from VPN routing to normal internet
-# Pi remains as DHCP server and internet gateway, but traffic goes directly to internet
+# Pi remains as DNS server and internet gateway, but traffic goes directly to internet
 # Usage: sudo ./stop_vpn.sh
 
 set -e
@@ -51,8 +51,11 @@ echo "✅ iptables updated for direct internet routing"
 
 # 3. Update dnsmasq DNS to use normal internet DNS
 echo "🔄 Updating dnsmasq DNS to normal internet..."
-sed -i "s/server=$VPN_DNS_SERVER/server=8.8.8.8/" /etc/dnsmasq.conf
-sed -i "s/dhcp-option=6,$VPN_DNS_SERVER/dhcp-option=6,8.8.8.8,8.8.4.4/" /etc/dnsmasq.conf
+if grep -q "^server=$UPSTREAM_DNS_SERVER" /etc/dnsmasq.conf; then
+    sed -i "s/^server=$UPSTREAM_DNS_SERVER/server=8.8.8.8/" /etc/dnsmasq.conf
+else
+    sed -i "s/^server=.*/server=8.8.8.8/" /etc/dnsmasq.conf || echo "server=8.8.8.8" >> /etc/dnsmasq.conf
+fi
 systemctl restart dnsmasq
 echo "✅ dnsmasq updated to use normal internet DNS"
 
@@ -84,7 +87,7 @@ echo ""
 echo "✅ VPN stopped! Pi gateway now routes traffic directly to internet."
 echo ""
 echo "The Pi continues to serve as:"
-echo "- DHCP server for your network"
+echo "- DNS server for your network"
 echo "- Internet gateway for all devices"
 echo "- DNS server using normal internet DNS (8.8.8.8, 8.8.4.4)"
 echo ""
