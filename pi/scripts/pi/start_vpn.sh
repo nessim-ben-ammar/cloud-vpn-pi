@@ -46,3 +46,11 @@ wg show
 
 echo "active" > "${WG_STATE_FILE:-/etc/wireguard/state}"
 chmod 600 "${WG_STATE_FILE:-/etc/wireguard/state}"
+
+# Persist iptables rules so they survive reboot (if iptables-save is available)
+if command -v iptables-save >/dev/null 2>&1; then
+    iptables-save > /etc/iptables/rules.v4
+    echo "✅ iptables rules saved to /etc/iptables/rules.v4"
+else
+    echo "⚠️  Warning: iptables-save not found; iptables rules may not persist after reboot"
+fi

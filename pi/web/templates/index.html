@@ -1,99 +1,143 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>VPN Control Panel</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-</head>
-<body>
-  <div class="page">
-    <header class="hero">
-      <div>
-        <p class="eyebrow">Cloud VPN Gateway</p>
-        <h1>VPN Control Panel</h1>
-        <p class="subtitle">Enable or disable your VPN tunnel and switch between any installed endpoints.</p>
-      </div>
-      <div class="status-chip {{ 'online' if status.status == 'active' else 'offline' }}">
-        <span class="dot"></span>
-        {{ 'VPN Enabled' if status.status == 'active' else 'VPN Disabled' }}
-      </div>
-    </header>
-
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        <div class="flash-grid">
-          {% for category, message in messages %}
-            <div class="flash {{ category }}">{{ message }}</div>
-          {% endfor %}
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VPN Control Panel</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='styles.css') }}"
+    />
+  </head>
+  <body>
+    <div class="page">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">Cloud VPN Gateway</p>
+          <h1>VPN Control Panel</h1>
+          <p class="subtitle">
+            Enable or disable your VPN tunnel and switch between any installed
+            endpoints.
+          </p>
         </div>
-      {% endif %}
-    {% endwith %}
+        <div
+          class="status-chip {{ 'online' if status.status == 'active' else 'offline' }}"
+        >
+          <span class="dot"></span>
+          {{ 'VPN Enabled' if status.status == 'active' else 'VPN Disabled' }}
+        </div>
+      </header>
 
-    <section class="grid">
-      <article class="card">
-        <header>
-          <h2>VPN Status</h2>
-          <p class="hint">Current WireGuard state on interface <strong>{{ status.wg_interface }}</strong>.</p>
-        </header>
-        <dl class="details">
-          <div>
-            <dt>State</dt>
-            <dd class="pill {{ 'success' if status.status == 'active' else 'muted' }}">{{ status.status|capitalize }}</dd>
-          </div>
-          <div>
-            <dt>Location</dt>
-            <dd>
-              {% if status.location in locations %}
-                {{ locations[status.location].label }}
-              {% else %}
+      {% with messages = get_flashed_messages(with_categories=true) %} {% if
+      messages %}
+      <div class="flash-grid">
+        {% for category, message in messages %}
+        <div class="flash {{ category }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+      {% endif %} {% endwith %}
+
+      <section class="grid">
+        <article class="card">
+          <header>
+            <h2>VPN Status</h2>
+            <p class="hint">
+              Current WireGuard state on interface
+              <strong>{{ status.wg_interface }}</strong>.
+            </p>
+          </header>
+          <dl class="details">
+            <div>
+              <dt>State</dt>
+              <dd
+                class="pill {{ 'success' if status.status == 'active' else 'muted' }}"
+              >
+                {{ status.status|capitalize }}
+              </dd>
+            </div>
+            <div>
+              <dt>Location</dt>
+              <dd>
+                {% if status.location in locations %} {{
+                locations[status.location].label }} {% else %}
                 <span class="pill muted">Unknown</span>
-              {% endif %}
-            </dd>
-          </div>
-          <div>
-            <dt>LAN Interface</dt>
-            <dd>{{ status.lan_interface }}</dd>
-          </div>
-        </dl>
+                {% endif %}
+              </dd>
+            </div>
+          </dl>
 
-        <form method="post" action="{{ url_for('toggle_vpn') }}" class="actions">
-          {% if status.status == 'active' %}
-            <button class="button ghost" name="action" value="stop" type="submit">Disable VPN</button>
-          {% else %}
-            <button class="button primary" name="action" value="start" type="submit">Enable VPN</button>
-          {% endif %}
-        </form>
-      </article>
+          <form
+            method="post"
+            action="{{ url_for('toggle_vpn') }}"
+            class="actions"
+          >
+            {% if status.status == 'active' %}
+            <button
+              class="button ghost"
+              name="action"
+              value="stop"
+              type="submit"
+            >
+              Disable VPN
+            </button>
+            {% else %}
+            <button
+              class="button primary"
+              name="action"
+              value="start"
+              type="submit"
+            >
+              Enable VPN
+            </button>
+            {% endif %}
+          </form>
+        </article>
 
-      <article class="card">
-        <header>
-          <h2>VPN Location</h2>
-          <p class="hint">Swap between the configs stored at <code class="path">{{ status.config_archive }}</code>. The service restarts automatically when switching.</p>
-        </header>
-        {% if locations %}
-          <form method="post" action="{{ url_for('change_location') }}" class="stack">
+        <article class="card">
+          <header>
+            <h2>VPN Location</h2>
+            <p class="hint">
+              Swap between the configs stored at
+              <code class="path">{{ status.config_archive }}</code>. The service
+              restarts automatically when switching.
+            </p>
+          </header>
+          {% if locations %}
+          <form
+            method="post"
+            action="{{ url_for('change_location') }}"
+            class="stack"
+          >
             {% for key, data in locations.items() %}
-              <label class="option">
-                <input type="radio" name="location" value="{{ key }}" {% if status.location == key %}checked{% endif %}>
-                <div>
-                  <div class="option-title">{{ data.label }}</div>
-                  <div class="option-desc">{{ data.description }}</div>
-                  <code class="path">{{ data.config }}</code>
-                </div>
-              </label>
+            <label class="option">
+              <input type="radio" name="location" value="{{ key }}" {% if
+              status.location == key %}checked{% endif %}>
+              <div>
+                <div class="option-title">{{ data.label }}</div>
+                {# description removed by request #}
+                <code class="path">{{ data.config }}</code>
+              </div>
+            </label>
             {% endfor %}
             <button class="button" type="submit">Switch Location</button>
           </form>
-        {% else %}
-          <p class="hint">No configs found. Ensure your WireGuard files (e.g., <code>frankfurt.conf</code>) are placed in <code class="path">{{ status.config_archive }}</code> and redeploy or refresh.</p>
-        {% endif %}
-      </article>
-    </section>
+          {% else %}
+          <p class="hint">
+            No configs found. Ensure your WireGuard files (e.g.,
+            <code>frankfurt.conf</code>) are placed in
+            <code class="path">{{ status.config_archive }}</code> and redeploy
+            or refresh.
+          </p>
+          {% endif %}
+        </article>
+      </section>
 
-    <footer class="footer">
-      <p>Ensure the corresponding WireGuard configuration files exist on the Pi before switching locations.</p>
-    </footer>
-  </div>
-</body>
+      <footer class="footer">
+        <p>
+          Ensure the corresponding WireGuard configuration files exist on the Pi
+          before switching locations.
+        </p>
+      </footer>
+    </div>
+  </body>
 </html>

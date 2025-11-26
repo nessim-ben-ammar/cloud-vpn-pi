@@ -67,19 +67,6 @@ CONFIG_ARCHIVE = RUNTIME_CONFIG["config_archive"]
 ACTIVE_LOCATION_FILE = RUNTIME_CONFIG["active_location_file"]
 STATE_FILE = RUNTIME_CONFIG["state_file"]
 
-LEGACY_LOCATIONS: Dict[str, Dict[str, str]] = {
-    "frankfurt": {
-        "label": "Frankfurt",
-        "config": os.environ.get("WG_FRANKFURT_CONFIG", "/etc/wireguard/wg0-frankfurt.conf"),
-        "description": "Primary VPN endpoint in Frankfurt",
-    },
-    "marseille": {
-        "label": "Marseille",
-        "config": os.environ.get("WG_MARSEILLE_CONFIG", "/etc/wireguard/wg0-marseille.conf"),
-        "description": "Backup VPN endpoint in Marseille",
-    },
-}
-
 
 def _slug_to_label(slug: str) -> str:
     return " ".join(part.capitalize() for part in slug.replace("_", "-").split("-"))
@@ -92,11 +79,11 @@ def load_locations() -> Dict[str, Dict[str, str]]:
     locations: Dict[str, Dict[str, str]] = {}
     for config_file in sorted(CONFIG_ARCHIVE.glob("*.conf")):
         key = config_file.stem
-        label = _slug_to_label(key)
+        label = key
         locations[key] = {
             "label": label,
             "config": str(config_file),
-            "description": f"WireGuard config for {label}",
+            "description": "",
         }
 
     return locations

@@ -15,8 +15,9 @@ write_files:
       #!/bin/bash
       set -e
 
-      # Detect external interface (you can hardcode if needed)
-      EXT_IF="ens3"
+      # Detect external interface dynamically (fallback to 'ens3' if detection fails)
+      EXT_IF="$(ip -4 route get 8.8.8.8 2>/dev/null | awk '/ dev /{for(i=1;i<=NF;i++) if($i=="dev") print $(i+1); exit}')"
+      EXT_IF="${EXT_IF:-ens3}"
 
       # Create key directory
       mkdir -p /etc/wireguard
@@ -51,13 +52,16 @@ write_files:
       iptables -P OUTPUT ACCEPT
       iptables -A INPUT -p tcp --dport 22 -j ACCEPT
       iptables -A INPUT -p udp --dport 51820 -j ACCEPT
+      # Ensure NAT/forwarding uses the detected external interface
       iptables -t nat -A PREROUTING -i wg0 -p udp --dport 53 -j DNAT --to-destination 192.168.2.1
+      # Use detected outbound interface for masquerade rules (also set in wg0 PostUp)
+      iptables -t nat -A POSTROUTING -o "$EXT_IF" -j MASQUERADE
       netfilter-persistent save
 
       # Configure Unbound root DNS
       curl -o /var/lib/unbound/root.hints https://www.internic.net/domain/named.root
       unbound-anchor -a /var/lib/unbound/root.key || true
-      
+
       # Fix permissions for unbound user
       chown unbound:unbound /var/lib/unbound/root.key
       chmod 644 /var/lib/unbound/root.hints

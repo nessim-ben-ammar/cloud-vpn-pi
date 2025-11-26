@@ -3,7 +3,8 @@ provider "oci" {
 }
 
 provider "oci" {
-  alias  = "marseille"
-  region = var.marseille_region
+  alias               = "marseille"
+  region              = var.marseille_region
+  config_file_profile = "DEFAULT"
 }
 

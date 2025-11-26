@@ -34,11 +34,6 @@ if ! command -v dnsmasq >/dev/null 2>&1; then
     exit 1
 fi
 
-# Check if WireGuard is configured
-if [ ! -f "/etc/wireguard/$WG_INTERFACE.conf" ]; then
-    echo "❌ Error: WireGuard configuration not found. Please run setup_wireguard.sh first."
-    exit 1
-fi
 
 # Stop dnsmasq if running
 echo "🛑 Stopping dnsmasq service..."
@@ -85,8 +80,9 @@ server=$UPSTREAM_DNS_SERVER
 domain-needed
 bogus-priv
 
-# Do NOT provide DHCP; router remains DHCP server
-no-dhcp-interface=$LAN_INTERFACE
+# Provide DHCP on the LAN interface specified by $LAN_INTERFACE.
+# Do not use `no-dhcp-interface` here because the Pi will act as DHCP
+# server for the LAN (router DHCP should be disabled).
 
 DNSMASQ_EOF
 

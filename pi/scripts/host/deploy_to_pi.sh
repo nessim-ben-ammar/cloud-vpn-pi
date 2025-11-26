@@ -13,7 +13,9 @@ CONFIG_PATH="$PI_DIR/config.sh"
 WEB_DIR="$PI_DIR/../web"
 REMOTE_SCRIPTS_DIR="~/scripts"
 REMOTE_WEB_DIR="~/vpn-web"
-REMOTE_CONFIG_DIR="$WG_REMOTE_CONFIG_DIR"
+# REMOTE_CONFIG_DIR is populated from `config.sh` after we source it
+# to ensure variables like WG_REMOTE_CONFIG_DIR are defined.
+REMOTE_CONFIG_DIR=""
 
 # Check if we're accidentally running on Pi
 if [ -f /proc/device-tree/model ] && grep -q "Raspberry Pi" /proc/device-tree/model 2>/dev/null; then
@@ -30,6 +32,8 @@ if [ -f "$CONFIG_PATH" ]; then
     USER="$SSH_USER"
     HOST="$SSH_HOST"
     PORT="$SSH_PORT"
+    # Now that config.sh has been sourced, populate REMOTE_CONFIG_DIR
+    REMOTE_CONFIG_DIR="${WG_REMOTE_CONFIG_DIR:-$REMOTE_CONFIG_DIR}"
 else
     echo "❌ Configuration file '$CONFIG_PATH' not found"
     echo "Please make sure config.sh exists in the scripts directory"
