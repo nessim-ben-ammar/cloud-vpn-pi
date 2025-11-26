@@ -112,6 +112,17 @@ h1 {
   font-size: 20px;
 }
 
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.card-header .hint {
+  max-width: 560px;
+}
+
 .hint {
   margin: 0;
   color: var(--muted);
@@ -189,6 +200,12 @@ dd {
   color: #f8fafc;
 }
 
+.button.danger {
+  background: var(--error);
+  border-color: transparent;
+  color: #f8fafc;
+}
+
 .button.ghost {
   background: transparent;
   border-color: var(--border);
@@ -218,10 +235,24 @@ dd {
   background: rgba(59, 130, 246, 0.05);
 }
 
+.option.no-vpn {
+  border-color: rgba(239, 68, 68, 0.4);
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.option.no-vpn:hover {
+  border-color: var(--error);
+  background: rgba(239, 68, 68, 0.08);
+}
+
 .option input[type="radio"] {
   accent-color: var(--accent);
   width: 18px;
   height: 18px;
+}
+
+.option.no-vpn input[type="radio"] {
+  accent-color: var(--error);
 }
 
 .option-title {
