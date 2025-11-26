@@ -35,7 +35,7 @@ echo ""
 
 ./install_packages.sh
 ./setup_fail2ban.sh
-./setup_wireguard.sh "$WG_CONFIG_DEST"
+./setup_wireguard.sh "$WG_DEFAULT_LOCATION"
 ./setup_gateway.sh
 ./setup_dnsmasq.sh
 

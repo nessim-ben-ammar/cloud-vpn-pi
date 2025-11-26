@@ -22,14 +22,27 @@ else
     exit 1
 fi
 
-# Check if configuration file is provided
+# Determine which config to use
 if [ $# -eq 0 ]; then
-    echo "Usage: $0 <config-file>"
-    echo "Example: $0 $WG_CONFIG_FILE"
-    exit 1
+    LOCATION="$WG_DEFAULT_LOCATION"
+    echo "ℹ️  No location provided, defaulting to '$LOCATION'"
+else
+    LOCATION="$1"
 fi
 
-CONFIG_FILE="$1"
+CONFIGS_DIR=${WG_REMOTE_CONFIG_DIR/#\~/$HOME}
+CONFIG_FROM_LOCATION="$CONFIGS_DIR/${LOCATION}.conf"
+
+if [ -f "$1" ] && [[ "$1" == /* ]]; then
+    CONFIG_FILE="$1"
+    LOCATION=$(basename "$1" .conf)
+elif [ -f "$CONFIG_FROM_LOCATION" ]; then
+    CONFIG_FILE="$CONFIG_FROM_LOCATION"
+else
+    echo "Error: Configuration for location '$LOCATION' not found."
+    echo "Looked for: $CONFIG_FROM_LOCATION"
+    exit 1
+fi
 
 echo "Setting up WireGuard on Raspberry Pi..."
 
@@ -44,14 +57,28 @@ echo "Configuring WireGuard..."
 
 # Define paths
 WG_CONF="/etc/wireguard/$WG_INTERFACE.conf"
+WG_CONFIG_ARCHIVE="${WG_CONFIG_ARCHIVE:-/etc/wireguard/configs}"
+WG_ACTIVE_LOCATION_FILE="${WG_ACTIVE_LOCATION_FILE:-/etc/wireguard/current_location}"
 
-# Create WireGuard directory and install configuration
+mkdir -p "$WG_CONFIG_ARCHIVE"
+
+# Sync all known configs locally for future switching via the web UI
+if compgen -G "$CONFIGS_DIR/*.conf" > /dev/null; then
+    for conf in "$CONFIGS_DIR"/*.conf; do
+        install -m 600 "$conf" "$WG_CONFIG_ARCHIVE/$(basename "$conf")"
+    done
+fi
+
+# Create WireGuard directory and install the active configuration
 mkdir -p /etc/wireguard
+install -m 600 "$CONFIG_FILE" "$WG_CONFIG_ARCHIVE/${LOCATION}.conf"
 install -m 600 "$CONFIG_FILE" "$WG_CONF"
+echo "$LOCATION" > "$WG_ACTIVE_LOCATION_FILE"
+chmod 600 "$WG_ACTIVE_LOCATION_FILE"
 
 # Enable and start WireGuard service
 systemctl enable wg-quick@$WG_INTERFACE
-systemctl start wg-quick@$WG_INTERFACE
+systemctl restart wg-quick@$WG_INTERFACE
 
 echo "✅ WireGuard setup completed!"
 echo ""

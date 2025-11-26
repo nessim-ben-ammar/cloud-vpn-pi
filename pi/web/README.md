@@ -22,12 +22,9 @@ service.
 
 2. **Ensure WireGuard configs exist**
 
-   Place your location-specific configs on the Pi:
-
-   - `/etc/wireguard/wg0-frankfurt.conf`
-   - `/etc/wireguard/wg0-marseille.conf`
-
-   Override the paths with `WG_FRANKFURT_CONFIG` or `WG_MARSEILLE_CONFIG` environment variables if needed.
+Place your location-specific configs on the Pi under `/etc/wireguard/configs` (e.g., `frankfurt.conf`, `marseille.conf`).
+The Pi setup scripts copy every config from `$WG_REMOTE_CONFIG_DIR` into that directory and write the current location to
+`/etc/wireguard/current_location` so the web UI knows which endpoint is active even after a reboot.
 
 3. **Run the app**
 
@@ -58,6 +55,8 @@ service.
 - Reads interface settings from `pi/scripts/config.sh` (`WG_INTERFACE`, `LAN_INTERFACE`).
 - "Enable VPN" mirrors the `start_vpn.sh` behavior: starts `wg-quick@<interface>` and updates NAT rules to route through WireGuard.
 - "Disable VPN" mirrors `stop_vpn.sh`: stops/disables `wg-quick@<interface>` and restores NAT on the LAN interface.
-- Switching locations copies the selected config into `/etc/wireguard/<interface>.conf` and restarts the service if it was already active.
+- Switching locations copies the selected config from `/etc/wireguard/configs/<location>.conf` into `/etc/wireguard/<interface>.conf`,
+  records the choice in `/etc/wireguard/current_location`, and restarts the service if it was already active. The status card reads
+  from that file to display the active location after restarts.
 
 > Run the app with root privileges so it can manage `systemctl` and `iptables`.
