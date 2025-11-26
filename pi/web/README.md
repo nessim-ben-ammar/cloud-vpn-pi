@@ -8,7 +8,7 @@ A lightweight Flask interface for controlling the Raspberry Pi VPN gateway. It l
 
 If you're already using the host deployment scripts in `pi/scripts/host`, running `./deploy_to_pi.sh` from that directory will
 sync this `pi/web` folder to the Pi (at `~/vpn-web`) and call `sudo ./setup_web_service.sh` to install/enable the systemd
-service. Set `DEPLOY_WEB_UI=false` when invoking the script to skip deploying the web UI.
+service.
 
 1. **Install dependencies**
 

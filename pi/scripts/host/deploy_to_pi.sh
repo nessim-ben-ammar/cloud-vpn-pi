@@ -73,23 +73,17 @@ else
     exit 1
 fi
 
-DEPLOY_WEB_UI=${DEPLOY_WEB_UI:-true}
-
-if [ "$DEPLOY_WEB_UI" = "true" ]; then
-    if [ ! -d "$WEB_DIR" ]; then
-        echo "❌ Web UI directory not found at $WEB_DIR"
-        exit 1
-    fi
-
-    echo "🔧 Syncing web UI to Pi..."
-    rsync -az --delete -e "ssh -i $KEY -p $PORT" "$WEB_DIR/" "$USER@$HOST:$REMOTE_WEB_DIR/"
-
-    echo "🔧 Installing/refreshing web UI service on Pi..."
-    ssh -i "$KEY" -p "$PORT" "$USER@$HOST" "cd $REMOTE_WEB_DIR && sudo bash setup_web_service.sh"
-    echo "✅ Web UI deployed and service enabled"
-else
-    echo "ℹ️  Skipping web UI deployment (DEPLOY_WEB_UI=false)"
+if [ ! -d "$WEB_DIR" ]; then
+    echo "❌ Web UI directory not found at $WEB_DIR"
+    exit 1
 fi
+
+echo "🔧 Syncing web UI to Pi..."
+rsync -az --delete -e "ssh -i $KEY -p $PORT" "$WEB_DIR/" "$USER@$HOST:$REMOTE_WEB_DIR/"
+
+echo "🔧 Installing/refreshing web UI service on Pi..."
+ssh -i "$KEY" -p "$PORT" "$USER@$HOST" "cd $REMOTE_WEB_DIR && sudo bash setup_web_service.sh"
+echo "✅ Web UI deployed and service enabled"
 
 # Execute setup on Pi
 echo "🔧 Executing setup on Pi..."
