@@ -2,7 +2,7 @@
 
 # HOST SCRIPT - Switch Pi gateway from VPN to normal internet remotely
 # This script runs ON the HOST to switch Pi from VPN routing to normal internet
-# Pi remains as DHCP server and internet gateway, but traffic goes directly to internet
+# Pi remains as DNS server and internet gateway, but traffic goes directly to internet
 # Usage: ./stop_vpn_remote.sh
 
 set -e
@@ -58,11 +58,11 @@ ssh -i "$KEY" -p "$PORT" "$USER@$HOST" "cd ~/scripts && sudo bash stop_vpn.sh"
 echo ""
 echo "✅ Pi gateway switch completed successfully!"
 echo ""
-echo "The Pi will continue to serve as DHCP server and internet gateway."
+echo "The Pi will continue to serve as DNS server and internet gateway."
 echo "All network traffic now goes directly to the internet (no VPN)."
 echo ""
 echo "If you still have connectivity issues:"
-echo "1. Check that devices are getting IP addresses from Pi DHCP"
+echo "1. Confirm clients are using the Pi for DNS"
 echo "2. Restart the Pi: ssh -i $KEY -p $PORT $USER@$HOST 'sudo reboot'"
 echo "3. Wait a few minutes for network services to stabilize"
 echo ""

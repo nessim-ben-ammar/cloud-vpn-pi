@@ -26,9 +26,9 @@ All scripts use centralized configuration from `config.sh`. Key settings:
 
 - **SSH Configuration**: Host, user, key path, port
 - **WireGuard Configuration**: Config file location, interface name
-- **Network Configuration**: IP addresses, DHCP range
+- **Network Configuration**: IP addresses and DHCP range (Pi hands out leases)
 - **fail2ban Configuration**: Ban times, retry limits
-- **DNS Configuration**: VPN DNS servers
+- **DNS Configuration**: Upstream DNS server used by the Pi resolver
 
 Edit `config.sh` to customize for your environment.
 
@@ -67,6 +67,11 @@ Edit `config.sh` to customize for your environment.
    sudo ./setup_gateway.sh
    sudo ./setup_dnsmasq.sh
    ```
+
+### Router
+
+- Disable the router's DHCP server so the Pi can provide leases that point
+  clients at the Pi for gateway and DNS.
 
 ## Protection
 
