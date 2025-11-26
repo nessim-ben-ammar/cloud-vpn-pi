@@ -128,6 +128,12 @@ def _ensure_permissions(config_path: Path) -> None:
     os.chmod(config_path, 0o600)
 
 
+def _record_location(location_key: str) -> None:
+    ACTIVE_LOCATION_FILE.parent.mkdir(parents=True, exist_ok=True)
+    ACTIVE_LOCATION_FILE.write_text(location_key, encoding="utf-8")
+    _ensure_permissions(ACTIVE_LOCATION_FILE)
+
+
 def _write_state(state: str) -> None:
     STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
     STATE_FILE.write_text(state, encoding="utf-8")
@@ -193,8 +199,7 @@ def set_location(location_key: str) -> None:
     ACTIVE_CONFIG.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy(location_config, ACTIVE_CONFIG)
     _ensure_permissions(ACTIVE_CONFIG)
-    ACTIVE_LOCATION_FILE.write_text(location_key, encoding="utf-8")
-    _ensure_permissions(ACTIVE_LOCATION_FILE)
+    _record_location(location_key)
 
     if was_active:
         start_vpn()
@@ -263,6 +268,24 @@ def toggle_vpn():
                 flash(str(err), "error")
     elif action == "switch":
         _set_location()
+    elif action == "apply":
+        if location_key == "none":
+            stop_vpn()
+            _record_location("none")
+            flash(
+                "VPN disabled. Traffic now routes directly to the internet.",
+                "warning",
+            )
+        else:
+            if _set_location():
+                try:
+                    start_vpn()
+                    flash(
+                        "VPN enabled. Traffic now routes through WireGuard.",
+                        "success",
+                    )
+                except LocationSwitchError as err:
+                    flash(str(err), "error")
     else:
         flash("Unknown action", "error")
 
