@@ -71,6 +71,15 @@ Edit `config.sh` to customize for your environment.
    sudo ./setup_dnsmasq.sh
    ```
 
+3. **Operational commands:**
+
+   - `activate_vpn.sh <location>` installs the specified WireGuard profile onto the Pi, makes it the active config, then calls `start_vpn.sh`.
+   - `start_vpn.sh` starts the currently installed WireGuard profile and rewrites NAT rules; it assumes the config already exists in `/etc/wireguard`.
+   - `deactivate_vpn.sh` is a JSON-friendly wrapper that logs output and calls `stop_vpn.sh`.
+   - `stop_vpn.sh` stops the WireGuard unit, rewrites NAT rules for direct internet, and restores upstream DNS.
+
+   Use the wrappers when driving from the web UI or when you need to switch locations, and the `start_vpn.sh`/`stop_vpn.sh` pair for straight service control.
+
 ### Router
 
 - Disable the router's DHCP server so the Pi can provide leases that point
