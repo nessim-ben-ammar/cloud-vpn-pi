@@ -78,11 +78,6 @@ log-dhcp
 # Cache size
 cache-size=1000
 
-# Don't read /etc/resolv.conf
-no-resolv
-server=$UPSTREAM_DNS_SERVER
-cache-size=1000
-
 # Upstream DNS server(s) dnsmasq will forward to
 server=$UPSTREAM_DNS_SERVER
 
