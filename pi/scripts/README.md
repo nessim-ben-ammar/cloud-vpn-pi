@@ -25,7 +25,7 @@ scripts/
 All scripts use centralized configuration from `config.sh`. Key settings:
 
 - **SSH Configuration**: Host, user, key path, port
-- **WireGuard Configuration**: Interface name plus per-location configs stored in `../clients/configs/<location>.conf`. The deploy script copies every config to the Pi at `$WG_REMOTE_CONFIG_DIR`, `setup_wireguard.sh` syncs them into `$WG_CONFIG_ARCHIVE` (default `/etc/wireguard/configs`), records the active site in `$WG_ACTIVE_LOCATION_FILE`, and activates the location specified (defaults to `$WG_DEFAULT_LOCATION`).
+- **WireGuard Configuration**: Interface name plus per-location configs stored in `../clients/configs/<location>-<device>.conf`. The deploy script copies every config to the Pi at `$WG_REMOTE_CONFIG_DIR`, `setup_wireguard.sh` syncs them into `$WG_CONFIG_ARCHIVE` (default `/etc/wireguard/configs`), records the active site in `$WG_ACTIVE_LOCATION_FILE`, and activates the location specified (defaults to `$WG_DEFAULT_LOCATION`).
 - **Network Configuration**: IP addresses and DHCP range (Pi hands out leases)
 - **fail2ban Configuration**: Ban times, retry limits
 - **DNS Configuration**: Upstream DNS server used by the Pi resolver
@@ -84,5 +84,5 @@ Edit `config.sh` to customize for your environment.
 
 ## Prerequisites
 
-- Place your WireGuard config files in `../clients/configs/<location>.conf` before running `deploy_to_pi.sh`
+- Place your WireGuard config files in `../clients/configs/<location>-<device>.conf` before running `deploy_to_pi.sh`
 - SSH key setup for Pi access (see `connect.sh` for configuration)

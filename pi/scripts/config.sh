@@ -15,16 +15,18 @@ SSH_HOST="$PI_IP"
 SSH_PORT=22
 
 # WireGuard Configuration
-# - Store multiple VPN configs in the clients/configs directory (one file per location, e.g., frankfurt.conf)
-# - WG_DEFAULT_LOCATION selects which config to activate on the Pi when running setup scripts
+# - Store multiple VPN configs in the clients/configs directory (one file per endpoint/device, e.g., frankfurt-home.conf)
+# - WG_DEFAULT_LOCATION can be used for manual activation, but setup_pi leaves the VPN inactive
 # - WG_REMOTE_CONFIG_DIR is where all configs are copied on the Pi for later switching
 WG_CONFIGS_DIR="/workspaces/cloud-vpn-pi/clients/configs"
 WG_DEFAULT_LOCATION="frankfurt"
 WG_REMOTE_CONFIG_DIR="/home/pi/wireguard-configs"
 # - WG_CONFIG_ARCHIVE is where configs are persisted for the web UI and switching after reboot
 # - WG_ACTIVE_LOCATION_FILE tracks the last applied location so restarts keep the UI in sync
+# - WG_STATE_FILE tracks whether the VPN should be active after a reboot
 WG_CONFIG_ARCHIVE="/etc/wireguard/configs"
 WG_ACTIVE_LOCATION_FILE="/etc/wireguard/current_location"
+WG_STATE_FILE="/etc/wireguard/state"
 WG_INTERFACE="wg0"
 
 # DNS Configuration

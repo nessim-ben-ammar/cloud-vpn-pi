@@ -10,6 +10,7 @@ fi
 
 LOCATION="$1"
 CLIENT_NAME="$2"
+COMBINED_NAME="${LOCATION}-${CLIENT_NAME}"
 
 get_output_value() {
   local output_name="$1"
@@ -141,17 +142,17 @@ qrencode -t ansiutf8 < \${CLIENT_NAME}.conf
 # Make config readable by ubuntu user for scp
 chmod 644 \${CLIENT_NAME}.conf
 
-# Copy config to ubuntu user's home directory for scp access
-cp \${CLIENT_NAME}.conf /home/ubuntu/\${CLIENT_NAME}.conf
-chown ubuntu:ubuntu /home/ubuntu/\${CLIENT_NAME}.conf
+# Copy config to ubuntu user's home directory for scp access, renamed with location for clarity
+cp \${CLIENT_NAME}.conf /home/ubuntu/\${COMBINED_NAME}.conf
+chown ubuntu:ubuntu /home/ubuntu/\${COMBINED_NAME}.conf
 EOF
 
 # Copy config back to host
-OUTPUT_DIR="configs/$LOCATION"
+OUTPUT_DIR="configs"
 mkdir -p "$OUTPUT_DIR"
-scp -i "$SSH_KEY" $SERVER:/home/ubuntu/${CLIENT_NAME}.conf "$OUTPUT_DIR/"
+scp -i "$SSH_KEY" $SERVER:/home/ubuntu/${COMBINED_NAME}.conf "$OUTPUT_DIR/${COMBINED_NAME}.conf"
 
 # Clean up temporary file on server
-ssh -i "$SSH_KEY" $SERVER "rm -f /home/ubuntu/${CLIENT_NAME}.conf"
+ssh -i "$SSH_KEY" $SERVER "rm -f /home/ubuntu/${COMBINED_NAME}.conf"
 
-echo "Client config saved to $OUTPUT_DIR/${CLIENT_NAME}.conf"
+echo "Client config saved to $OUTPUT_DIR/${COMBINED_NAME}.conf"

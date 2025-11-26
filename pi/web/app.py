@@ -46,6 +46,7 @@ def load_runtime_config() -> Dict[str, object]:
     active_location_file = Path(
         _read_config_variable("WG_ACTIVE_LOCATION_FILE", "/etc/wireguard/current_location")
     )
+    state_file = Path(_read_config_variable("WG_STATE_FILE", "/etc/wireguard/state"))
 
     return {
         "wg_interface": wg_interface,
@@ -53,6 +54,7 @@ def load_runtime_config() -> Dict[str, object]:
         "dns_upstream": dns_upstream,
         "config_archive": config_archive,
         "active_location_file": active_location_file,
+        "state_file": state_file,
     }
 
 
@@ -63,6 +65,7 @@ LAN_INTERFACE = RUNTIME_CONFIG["lan_interface"]
 ACTIVE_CONFIG = Path(f"/etc/wireguard/{WG_INTERFACE}.conf")
 CONFIG_ARCHIVE = RUNTIME_CONFIG["config_archive"]
 ACTIVE_LOCATION_FILE = RUNTIME_CONFIG["active_location_file"]
+STATE_FILE = RUNTIME_CONFIG["state_file"]
 
 LEGACY_LOCATIONS: Dict[str, Dict[str, str]] = {
     "frankfurt": {
@@ -138,6 +141,12 @@ def _ensure_permissions(config_path: Path) -> None:
     os.chmod(config_path, 0o600)
 
 
+def _write_state(state: str) -> None:
+    STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    STATE_FILE.write_text(state, encoding="utf-8")
+    _ensure_permissions(STATE_FILE)
+
+
 def _enable_nat_for_vpn() -> None:
     subprocess.run(["iptables", "-t", "nat", "-F", "POSTROUTING"], check=False)
     subprocess.run(["iptables", "-t", "nat", "-A", "POSTROUTING", "-o", WG_INTERFACE, "-j", "MASQUERADE"], check=False)
@@ -158,10 +167,15 @@ def _run_pi_script(script_name: str) -> bool:
 
 
 def start_vpn() -> None:
+    if not ACTIVE_CONFIG.exists():
+        raise LocationSwitchError("No active WireGuard config found. Choose a location first.")
+
     if not _run_pi_script("start_vpn.sh"):
         subprocess.run(["systemctl", "enable", f"wg-quick@{WG_INTERFACE}"], check=False)
         subprocess.run(["systemctl", "start", f"wg-quick@{WG_INTERFACE}"], check=False)
         _enable_nat_for_vpn()
+
+    _write_state("active")
 
 
 def stop_vpn() -> None:
@@ -169,6 +183,8 @@ def stop_vpn() -> None:
         subprocess.run(["systemctl", "stop", f"wg-quick@{WG_INTERFACE}"], check=False)
         subprocess.run(["systemctl", "disable", f"wg-quick@{WG_INTERFACE}"], check=False)
         _enable_nat_for_direct()
+
+    _write_state("inactive")
 
 
 def set_location(location_key: str) -> None:
@@ -224,8 +240,11 @@ def index():
 def toggle_vpn():
     action = request.form.get("action")
     if action == "start":
-        start_vpn()
-        flash("VPN enabled. Traffic now routes through WireGuard.", "success")
+        try:
+            start_vpn()
+            flash("VPN enabled. Traffic now routes through WireGuard.", "success")
+        except LocationSwitchError as err:
+            flash(str(err), "error")
     elif action == "stop":
         stop_vpn()
         flash("VPN disabled. Traffic now routes directly to the internet.", "warning")

@@ -22,65 +22,89 @@ else
     exit 1
 fi
 
-# Determine which config to use
-if [ $# -eq 0 ]; then
-    LOCATION="$WG_DEFAULT_LOCATION"
-    echo "ℹ️  No location provided, defaulting to '$LOCATION'"
-else
-    LOCATION="$1"
+# Determine which config to use (if any)
+ACTIVATE_LOCATION=""
+if [ $# -gt 0 ]; then
+    ACTIVATE_LOCATION="$1"
 fi
 
 CONFIGS_DIR=${WG_REMOTE_CONFIG_DIR/#\~/$HOME}
-CONFIG_FROM_LOCATION="$CONFIGS_DIR/${LOCATION}.conf"
-
-if [ -f "$1" ] && [[ "$1" == /* ]]; then
-    CONFIG_FILE="$1"
-    LOCATION=$(basename "$1" .conf)
-elif [ -f "$CONFIG_FROM_LOCATION" ]; then
-    CONFIG_FILE="$CONFIG_FROM_LOCATION"
-else
-    echo "Error: Configuration for location '$LOCATION' not found."
-    echo "Looked for: $CONFIG_FROM_LOCATION"
-    exit 1
-fi
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 echo "Setting up WireGuard on Raspberry Pi..."
-
-# Check if configuration file exists
-if [ ! -f "$CONFIG_FILE" ]; then
-    echo "Error: Configuration file '$CONFIG_FILE' not found"
-    exit 1
-fi
-
-echo "Using configuration file: $CONFIG_FILE"
-echo "Configuring WireGuard..."
+echo "Copying available configs from $CONFIGS_DIR (expected format: <location>-<device>.conf)"
 
 # Define paths
 WG_CONF="/etc/wireguard/$WG_INTERFACE.conf"
 WG_CONFIG_ARCHIVE="${WG_CONFIG_ARCHIVE:-/etc/wireguard/configs}"
 WG_ACTIVE_LOCATION_FILE="${WG_ACTIVE_LOCATION_FILE:-/etc/wireguard/current_location}"
+WG_STATE_FILE="${WG_STATE_FILE:-/etc/wireguard/state}"
+RESTORE_SERVICE="/etc/systemd/system/vpn-state-restore.service"
 
 mkdir -p "$WG_CONFIG_ARCHIVE"
+mkdir -p /etc/wireguard
 
 # Sync all known configs locally for future switching via the web UI
 if compgen -G "$CONFIGS_DIR/*.conf" > /dev/null; then
     for conf in "$CONFIGS_DIR"/*.conf; do
         install -m 600 "$conf" "$WG_CONFIG_ARCHIVE/$(basename "$conf")"
     done
+else
+    echo "⚠️  No WireGuard configs found in $CONFIGS_DIR"
 fi
 
-# Create WireGuard directory and install the active configuration
-mkdir -p /etc/wireguard
-install -m 600 "$CONFIG_FILE" "$WG_CONFIG_ARCHIVE/${LOCATION}.conf"
-install -m 600 "$CONFIG_FILE" "$WG_CONF"
-echo "$LOCATION" > "$WG_ACTIVE_LOCATION_FILE"
+echo "" > "$WG_ACTIVE_LOCATION_FILE"
 chmod 600 "$WG_ACTIVE_LOCATION_FILE"
+echo "inactive" > "$WG_STATE_FILE"
+chmod 600 "$WG_STATE_FILE"
 
-# Enable and start WireGuard service
-systemctl enable wg-quick@$WG_INTERFACE
-systemctl restart wg-quick@$WG_INTERFACE
+if [ -n "$ACTIVATE_LOCATION" ]; then
+    CONFIG_FILE="$CONFIGS_DIR/${ACTIVATE_LOCATION}.conf"
+
+    if [ -f "$ACTIVATE_LOCATION" ] && [[ "$ACTIVATE_LOCATION" == /* ]]; then
+        CONFIG_FILE="$ACTIVATE_LOCATION"
+        ACTIVATE_LOCATION=$(basename "$ACTIVATE_LOCATION" .conf)
+    elif [ ! -f "$CONFIG_FILE" ] && [ -f "$WG_CONFIG_ARCHIVE/${ACTIVATE_LOCATION}.conf" ]; then
+        CONFIG_FILE="$WG_CONFIG_ARCHIVE/${ACTIVATE_LOCATION}.conf"
+    fi
+
+    if [ ! -f "$CONFIG_FILE" ]; then
+        echo "Error: Configuration for '$ACTIVATE_LOCATION' not found."
+        exit 1
+    fi
+
+    install -m 600 "$CONFIG_FILE" "$WG_CONFIG_ARCHIVE/$(basename "$CONFIG_FILE")"
+    install -m 600 "$CONFIG_FILE" "$WG_CONF"
+    echo "$ACTIVATE_LOCATION" > "$WG_ACTIVE_LOCATION_FILE"
+    chmod 600 "$WG_ACTIVE_LOCATION_FILE"
+    echo "active" > "$WG_STATE_FILE"
+    chmod 600 "$WG_STATE_FILE"
+
+    systemctl enable wg-quick@$WG_INTERFACE
+    systemctl restart wg-quick@$WG_INTERFACE
+else
+    systemctl disable --now wg-quick@$WG_INTERFACE >/dev/null 2>&1 || true
+    rm -f "$WG_CONF"
+fi
+
+cat > "$RESTORE_SERVICE" <<EOF
+[Unit]
+Description=Restore WireGuard VPN state
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=$SCRIPT_DIR/restore_vpn_state.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl enable vpn-state-restore.service
 
 echo "✅ WireGuard setup completed!"
 echo ""
 echo "WireGuard status:"
-wg show
+wg show || true
