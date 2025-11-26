@@ -6,6 +6,14 @@
 
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PI_DIR="$SCRIPT_DIR/.."
+PI_PI_DIR="$PI_DIR/pi"
+CONFIG_PATH="$PI_DIR/config.sh"
+WEB_DIR="$PI_DIR/../web"
+REMOTE_SCRIPTS_DIR="~/scripts"
+REMOTE_WEB_DIR="~/vpn-web"
+
 # Check if we're accidentally running on Pi
 if [ -f /proc/device-tree/model ] && grep -q "Raspberry Pi" /proc/device-tree/model 2>/dev/null; then
     echo "❌ ERROR: This script should run on the HOST, not on the Pi!"
@@ -14,14 +22,15 @@ if [ -f /proc/device-tree/model ] && grep -q "Raspberry Pi" /proc/device-tree/mo
 fi
 
 # Source centralized configuration
-if [ -f "../config.sh" ]; then
-    source "../config.sh"
+if [ -f "$CONFIG_PATH" ]; then
+    # shellcheck disable=SC1090
+    source "$CONFIG_PATH"
     KEY="$SSH_KEY"
     USER="$SSH_USER"
     HOST="$SSH_HOST"
     PORT="$SSH_PORT"
 else
-    echo "❌ Configuration file '../config.sh' not found"
+    echo "❌ Configuration file '$CONFIG_PATH' not found"
     echo "Please make sure config.sh exists in the scripts directory"
     exit 1
 fi
@@ -46,12 +55,12 @@ echo ""
 
 # Create permanent scripts directory on Pi
 echo "🔧 Creating scripts directory on Pi..."
-ssh -i "$KEY" -p "$PORT" "$USER@$HOST" "mkdir -p ~/scripts"
+ssh -i "$KEY" -p "$PORT" "$USER@$HOST" "mkdir -p $REMOTE_SCRIPTS_DIR"
 
 # Copy all pi scripts and config to Pi
 echo "🔧 Copying scripts and config to Pi..."
-scp -i "$KEY" -P "$PORT" ../pi/*.sh ../config.sh "$USER@$HOST:~/scripts/"
-ssh -i "$KEY" -p "$PORT" "$USER@$HOST" "chmod +x ~/scripts/*.sh"
+scp -i "$KEY" -P "$PORT" "$PI_PI_DIR"/*.sh "$CONFIG_PATH" "$USER@$HOST:$REMOTE_SCRIPTS_DIR/"
+ssh -i "$KEY" -p "$PORT" "$USER@$HOST" "chmod +x $REMOTE_SCRIPTS_DIR/*.sh"
 
 # Check if WireGuard config file exists
 if [ -f "$WG_CONFIG_SOURCE" ]; then
@@ -64,10 +73,29 @@ else
     exit 1
 fi
 
+if [ ! -d "$WEB_DIR" ]; then
+    echo "❌ Web UI directory not found at $WEB_DIR"
+    exit 1
+fi
+
+echo "🔧 Syncing web UI to Pi..."
+# Ensure remote web dir exists and is writable by the remote user
+ssh -i "$KEY" -p "$PORT" "$USER@$HOST" "mkdir -p $REMOTE_WEB_DIR && sudo chown -R $USER:$USER $REMOTE_WEB_DIR || true"
+
+# Rsync web UI to Pi. Exclude local virtualenv and ensure deletions.
+rsync -az --delete --exclude='.venv' -e "ssh -i $KEY -p $PORT" "$WEB_DIR/" "$USER@$HOST:$REMOTE_WEB_DIR/"
+
+# Fix ownership on remote in case any files were created by sudo operations
+ssh -i "$KEY" -p "$PORT" "$USER@$HOST" "sudo chown -R $USER:$USER $REMOTE_WEB_DIR || true"
+
+echo "🔧 Installing/refreshing web UI service on Pi..."
+ssh -i "$KEY" -p "$PORT" "$USER@$HOST" "cd $REMOTE_WEB_DIR && sudo bash setup_web_service.sh"
+echo "✅ Web UI deployed and service enabled"
+
 # Execute setup on Pi
 echo "🔧 Executing setup on Pi..."
 echo ""
-ssh -i "$KEY" -p "$PORT" "$USER@$HOST" "cd ~/scripts && sudo bash setup_pi.sh"
+ssh -i "$KEY" -p "$PORT" "$USER@$HOST" "cd $REMOTE_SCRIPTS_DIR && sudo bash setup_pi.sh"
 
 echo ""
 echo "✅ Pi VPN Gateway setup completed successfully!"

@@ -43,6 +43,9 @@ Edit `config.sh` to customize for your environment.
    ./deploy_to_pi.sh
    ```
 
+   This syncs the VPN gateway scripts, copies your WireGuard config, and deploys the web UI to `~/vpn-web` on the Pi
+   before enabling its systemd service via `sudo bash setup_web_service.sh`.
+
 2. **Connect to Pi:**
    ```bash
    cd host/
