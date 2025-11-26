@@ -6,3 +6,4 @@ provider "oci" {
   alias  = "marseille"
   region = var.marseille_region
 }
+

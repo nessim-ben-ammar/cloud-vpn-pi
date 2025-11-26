@@ -14,22 +14,64 @@ CLIENT_NAME="$2"
 get_output_value() {
   local output_name="$1"
   local location="$2"
-  python - <<'PY' "$output_name" "$location"
-import json
-import subprocess
-import sys
 
-output_name, location = sys.argv[1], sys.argv[2]
-data = json.loads(subprocess.check_output([
-    "terraform", "-chdir=../iac", "output", "-json", output_name
-]))
+  local json
+  if ! json=$(terraform -chdir=../iac output -json "$output_name" 2>/dev/null); then
+    echo "Error: terraform failed to get output '$output_name'" >&2
+    exit 1
+  fi
 
-if location not in data:
-    sys.stderr.write(f"Unknown location '{location}'. Available: {', '.join(sorted(data))}\n")
-    sys.exit(1)
+  # If jq is available prefer it (more robust JSON parsing)
+  if command -v jq >/dev/null 2>&1; then
+    # Try to get value for the requested location (map case)
+    local val
+    val=$(printf '%s' "$json" | jq -r --arg loc "$location" 'if (type=="object" or type=="array") and has($loc) then .[$loc] elif type=="string" then . else empty end')
+    if [ -n "$val" ]; then
+      printf '%s' "$val"
+      return 0
+    fi
 
-print(data[location])
-PY
+    # If location wasn't found, show available keys (if any)
+    local keys
+    keys=$(printf '%s' "$json" | jq -r 'if type=="object" then keys[] else empty end' 2>/dev/null | paste -sd', ' -)
+    if [ -z "$keys" ]; then
+      echo "Unknown location '$location'. (no keys found)" >&2
+      exit 1
+    else
+      echo "Unknown location '$location'. Available: $keys" >&2
+      exit 1
+    fi
+  else
+    # No jq available: fallback to a conservative text parse.
+    # Remove whitespace/newlines for simpler matching
+    local compact
+    compact=$(printf '%s' "$json" | tr -d '[:space:]')
+
+    # Try match as object: "location":"value"
+    local val
+    val=$(printf '%s' "$compact" | sed -n "s/.*\"$location\":\"\([^\"]*\)\".*/\1/p")
+    if [ -n "$val" ]; then
+      printf '%s' "$val"
+      return 0
+    fi
+
+    # If the output is just a plain string ("value"), return it
+    val=$(printf '%s' "$compact" | sed -n 's/^"\(.*\)"$/\1/p')
+    if [ -n "$val" ]; then
+      printf '%s' "$val"
+      return 0
+    fi
+
+    # Otherwise, try to list available keys for a friendlier error
+    local keys
+    keys=$(printf '%s' "$compact" | grep -o '"[^"\\]*":' | sed 's/":$//' | sed 's/"//g' | paste -sd', ' -)
+    if [ -z "$keys" ]; then
+      echo "Unknown location '$location'." >&2
+    else
+      echo "Unknown location '$location'. Available: $keys" >&2
+    fi
+    exit 1
+  fi
 }
 
 SERVER_IP=$(get_output_value "instance_public_ips" "$LOCATION")

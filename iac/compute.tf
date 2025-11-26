@@ -55,14 +55,14 @@ locals {
 }
 
 # Create the compute instance
-resource "oci_core_instance" "cloud_vpn_instance" {
+resource "oci_core_instance" "cloud_vpn_instance_frankfurt" {
   availability_domain = var.frankfurt_availability_domain
   compartment_id      = oci_identity_compartment.cloud_vpn_cmp.id
   display_name        = "cloud-vpn-${var.frankfurt_region}-gateway"
   shape               = local.frankfurt_shape
 
   create_vnic_details {
-    subnet_id        = oci_core_subnet.cloud_vpn_pub_sn.id
+    subnet_id        = oci_core_subnet.cloud_vpn_pub_sn_frankfurt.id
     assign_public_ip = true
   }
 

@@ -1,44 +1,44 @@
 resource "oci_identity_compartment" "cloud_vpn_cmp" {
   compartment_id = var.tenancy_ocid
-  description    = "Compartment for cloud VPN resources in ${var.frankfurt_region}"
-  name           = "cloud-vpn-${var.frankfurt_region}-compartment"
+  description    = "Compartment for cloud VPN resources in eu"
+  name           = "cloud-vpn-eu-compartment"
   enable_delete  = true
 }
 
-resource "oci_core_vcn" "cloud_vpn_vcn" {
+resource "oci_core_vcn" "cloud_vpn_vcn_frankfurt" {
   cidr_block     = "10.0.0.0/16"
   compartment_id = oci_identity_compartment.cloud_vpn_cmp.id
   display_name   = "cloud-vpn-${var.frankfurt_region}-vcn"
 }
 
-resource "oci_core_internet_gateway" "cloud_vpn_ig" {
+resource "oci_core_internet_gateway" "cloud_vpn_ig_frankfurt" {
   compartment_id = oci_identity_compartment.cloud_vpn_cmp.id
-  vcn_id         = oci_core_vcn.cloud_vpn_vcn.id
+  vcn_id         = oci_core_vcn.cloud_vpn_vcn_frankfurt.id
   display_name   = "cloud-vpn-${var.frankfurt_region}-ig"
 }
 
-resource "oci_core_subnet" "cloud_vpn_pub_sn" {
+resource "oci_core_subnet" "cloud_vpn_pub_sn_frankfurt" {
   compartment_id    = oci_identity_compartment.cloud_vpn_cmp.id
-  vcn_id            = oci_core_vcn.cloud_vpn_vcn.id
+  vcn_id            = oci_core_vcn.cloud_vpn_vcn_frankfurt.id
   cidr_block        = "10.0.0.0/24"
   display_name      = "cloud-vpn-${var.frankfurt_region}-pub-sn"
-  route_table_id    = oci_core_route_table.cloud_vpn_pub_rt.id
-  security_list_ids = [oci_core_security_list.cloud_vpn_pub_sl.id]
+  route_table_id    = oci_core_route_table.cloud_vpn_pub_rt_frankfurt.id
+  security_list_ids = [oci_core_security_list.cloud_vpn_pub_sl_frankfurt.id]
 }
-resource "oci_core_route_table" "cloud_vpn_pub_rt" {
+resource "oci_core_route_table" "cloud_vpn_pub_rt_frankfurt" {
   compartment_id = oci_identity_compartment.cloud_vpn_cmp.id
-  vcn_id         = oci_core_vcn.cloud_vpn_vcn.id
+  vcn_id         = oci_core_vcn.cloud_vpn_vcn_frankfurt.id
   display_name   = "cloud-vpn-${var.frankfurt_region}-pub-rt"
   route_rules {
     destination       = "0.0.0.0/0"
     destination_type  = "CIDR_BLOCK"
-    network_entity_id = oci_core_internet_gateway.cloud_vpn_ig.id
+    network_entity_id = oci_core_internet_gateway.cloud_vpn_ig_frankfurt.id
   }
 }
 
-resource "oci_core_security_list" "cloud_vpn_pub_sl" {
+resource "oci_core_security_list" "cloud_vpn_pub_sl_frankfurt" {
   compartment_id = oci_identity_compartment.cloud_vpn_cmp.id
-  vcn_id         = oci_core_vcn.cloud_vpn_vcn.id
+  vcn_id         = oci_core_vcn.cloud_vpn_vcn_frankfurt.id
   display_name   = "cloud-vpn-${var.frankfurt_region}-pub-sl"
 
   # Allow all outbound traffic (required for VPN to access internet)
