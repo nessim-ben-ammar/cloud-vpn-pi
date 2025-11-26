@@ -70,7 +70,7 @@ if [ -d "$WG_CONFIGS_DIR" ] && compgen -G "$WG_CONFIGS_DIR/*.conf" > /dev/null; 
     scp -i "$KEY" -P "$PORT" "$WG_CONFIGS_DIR"/*.conf "$USER@$HOST:$REMOTE_CONFIG_DIR/"
 else
     echo "⚠️  No WireGuard configs found in $WG_CONFIGS_DIR"
-    echo "Add at least one config file named <location>.conf before deploying."
+    echo "Add at least one config file named <location>-<device>.conf before deploying."
     exit 1
 fi
 

@@ -22,6 +22,12 @@ else
     exit 1
 fi
 
+if [ ! -f "/etc/wireguard/$WG_INTERFACE.conf" ]; then
+    echo "❌ Active WireGuard config '/etc/wireguard/$WG_INTERFACE.conf' not found"
+    echo "Select a location via the web UI before starting the VPN."
+    exit 1
+fi
+
 echo "🔧 Starting WireGuard VPN..."
 systemctl enable wg-quick@$WG_INTERFACE
 systemctl start wg-quick@$WG_INTERFACE
@@ -37,3 +43,6 @@ iptables -t nat -L POSTROUTING -v --line-numbers
 
 echo "WireGuard status:"
 wg show
+
+echo "active" > "${WG_STATE_FILE:-/etc/wireguard/state}"
+chmod 600 "${WG_STATE_FILE:-/etc/wireguard/state}"

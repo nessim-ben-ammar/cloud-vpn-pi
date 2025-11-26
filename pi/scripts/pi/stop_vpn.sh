@@ -49,6 +49,9 @@ iptables -t nat -F POSTROUTING
 iptables -t nat -A POSTROUTING -o $LAN_INTERFACE -j MASQUERADE
 echo "✅ iptables updated for direct internet routing"
 
+echo "inactive" > "${WG_STATE_FILE:-/etc/wireguard/state}"
+chmod 600 "${WG_STATE_FILE:-/etc/wireguard/state}"
+
 # 3. Update dnsmasq DNS to use normal internet DNS
 echo "🔄 Updating dnsmasq DNS to normal internet..."
 if grep -q "^server=$UPSTREAM_DNS_SERVER" /etc/dnsmasq.conf; then
