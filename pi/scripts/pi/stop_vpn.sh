@@ -5,7 +5,7 @@
 # Pi remains as DNS server and internet gateway, but traffic goes directly to internet
 # Usage: sudo ./stop_vpn.sh
 
-set -e
+set -euo pipefail
 
 # Check if we're running as root/sudo
 if [ "$EUID" -ne 0 ]; then
@@ -22,6 +22,9 @@ else
     echo "Please make sure config.sh exists in the current directory"
     exit 1
 fi
+
+DNSMASQ_CONF="/etc/dnsmasq.conf"
+UPSTREAM_DNS="${UPSTREAM_DNS_SERVER:-8.8.8.8}"
 
 echo "🔧 Switching Pi gateway from VPN to normal internet..."
 echo "====================================================="
@@ -54,13 +57,14 @@ chmod 600 "${WG_STATE_FILE:-/etc/wireguard/state}"
 
 # 3. Update dnsmasq DNS to use normal internet DNS
 echo "🔄 Updating dnsmasq DNS to normal internet..."
-if grep -q "^server=$UPSTREAM_DNS_SERVER" /etc/dnsmasq.conf; then
-    sed -i "s/^server=$UPSTREAM_DNS_SERVER/server=8.8.8.8/" /etc/dnsmasq.conf
+if grep -q "^server=" "$DNSMASQ_CONF"; then
+    # Replace the first server= line to avoid duplicates
+    sed -i "0,/^server=.*/{s#^server=.*#server=$UPSTREAM_DNS#}" "$DNSMASQ_CONF"
 else
-    sed -i "s/^server=.*/server=8.8.8.8/" /etc/dnsmasq.conf || echo "server=8.8.8.8" >> /etc/dnsmasq.conf
+    echo "server=$UPSTREAM_DNS" >> "$DNSMASQ_CONF"
 fi
 systemctl restart dnsmasq
-echo "✅ dnsmasq updated to use normal internet DNS"
+echo "✅ dnsmasq updated to use upstream DNS $UPSTREAM_DNS"
 
 # 4. Save iptables rules
 echo "💾 Saving iptables rules..."
@@ -92,6 +96,6 @@ echo ""
 echo "The Pi continues to serve as:"
 echo "- DNS server for your network"
 echo "- Internet gateway for all devices"
-echo "- DNS server using normal internet DNS (8.8.8.8, 8.8.4.4)"
+echo "- DNS server using upstream resolver ($UPSTREAM_DNS)"
 echo ""
-echo "To re-enable VPN mode, run: ./deploy_to_pi.sh"
+echo "To re-enable VPN mode, run: ./start_vpn.sh or use the web UI"
