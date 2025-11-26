@@ -67,8 +67,9 @@ resource "oci_core_instance" "cloud_vpn_instance" {
   }
 
   source_details {
-    source_type = "image"
-    source_id   = data.oci_core_images.ubuntu_images_frankfurt.images[0].id
+    source_type             = "image"
+    source_id               = data.oci_core_images.ubuntu_images_frankfurt.images[0].id
+    boot_volume_size_in_gbs = 50
   }
 
   metadata = {
@@ -80,11 +81,11 @@ resource "oci_core_instance" "cloud_vpn_instance" {
 }
 
 resource "oci_core_instance" "cloud_vpn_instance_marseille" {
-  provider             = oci.marseille
-  availability_domain  = var.marseille_availability_domain
-  compartment_id       = oci_identity_compartment.cloud_vpn_cmp.id
-  display_name         = "cloud-vpn-${var.marseille_region}-instance"
-  shape                = local.marseille_shape
+  provider            = oci.marseille
+  availability_domain = var.marseille_availability_domain
+  compartment_id      = oci_identity_compartment.cloud_vpn_cmp.id
+  display_name        = "cloud-vpn-${var.marseille_region}-instance"
+  shape               = local.marseille_shape
 
   shape_config {
     memory_in_gbs = local.marseille_shape_memory_gb
@@ -97,8 +98,9 @@ resource "oci_core_instance" "cloud_vpn_instance_marseille" {
   }
 
   source_details {
-    source_type = "image"
-    source_id   = data.oci_core_images.ubuntu_images_marseille.images[0].id
+    source_type             = "image"
+    source_id               = data.oci_core_images.ubuntu_images_marseille.images[0].id
+    boot_volume_size_in_gbs = 50
   }
 
   metadata = {
