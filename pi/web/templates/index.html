@@ -51,20 +51,6 @@
           </header>
 
           <div class="stack">
-            <label class="option no-vpn">
-              <input
-                type="radio"
-                name="location"
-                value="none"
-                {% if status.status != 'active' %}checked{% endif %}
-                required
-              />
-              <div>
-                <div class="option-title">No VPN (Direct connection)</div>
-                <p class="option-desc">Send traffic without WireGuard routing.</p>
-              </div>
-            </label>
-
             {% if locations %}
             {% for key, data in locations.items() %}
             <label class="option">
@@ -89,6 +75,20 @@
               or refresh.
             </p>
             {% endif %}
+
+            <label class="option no-vpn">
+              <input
+                type="radio"
+                name="location"
+                value="none"
+                {% if status.status != 'active' %}checked{% endif %}
+                required
+              />
+              <div>
+                <div class="option-title">No VPN (Direct connection)</div>
+                <p class="option-desc">Send traffic without WireGuard routing.</p>
+              </div>
+            </label>
 
             <button
               class="button primary"
