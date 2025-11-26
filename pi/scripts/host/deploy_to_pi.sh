@@ -79,7 +79,14 @@ if [ ! -d "$WEB_DIR" ]; then
 fi
 
 echo "🔧 Syncing web UI to Pi..."
-rsync -az --delete -e "ssh -i $KEY -p $PORT" "$WEB_DIR/" "$USER@$HOST:$REMOTE_WEB_DIR/"
+# Ensure remote web dir exists and is writable by the remote user
+ssh -i "$KEY" -p "$PORT" "$USER@$HOST" "mkdir -p $REMOTE_WEB_DIR && sudo chown -R $USER:$USER $REMOTE_WEB_DIR || true"
+
+# Rsync web UI to Pi. Exclude local virtualenv and ensure deletions.
+rsync -az --delete --exclude='.venv' -e "ssh -i $KEY -p $PORT" "$WEB_DIR/" "$USER@$HOST:$REMOTE_WEB_DIR/"
+
+# Fix ownership on remote in case any files were created by sudo operations
+ssh -i "$KEY" -p "$PORT" "$USER@$HOST" "sudo chown -R $USER:$USER $REMOTE_WEB_DIR || true"
 
 echo "🔧 Installing/refreshing web UI service on Pi..."
 ssh -i "$KEY" -p "$PORT" "$USER@$HOST" "cd $REMOTE_WEB_DIR && sudo bash setup_web_service.sh"

@@ -13,12 +13,17 @@ if [[ "$EUID" -ne 0 ]]; then
   exit 1
 fi
 
-if [[ ! -d "$VENV_PATH" ]]; then
-  python3 -m venv "$VENV_PATH"
+if [[ -d "$VENV_PATH" ]]; then
+  echo "Found existing virtualenv at $VENV_PATH — removing to avoid conflicts..."
+  rm -rf "$VENV_PATH"
 fi
 
+echo "Creating virtualenv at $VENV_PATH..."
+python3 -m venv "$VENV_PATH"
+
+echo "Upgrading pip and installing requirements (no cache)..."
 "$VENV_PATH/bin/pip" install --upgrade pip
-"$VENV_PATH/bin/pip" install -r "$APP_DIR/requirements.txt"
+"$VENV_PATH/bin/pip" install --no-cache-dir -r "$APP_DIR/requirements.txt"
 
 if [[ ! -f "$ENV_FILE" ]]; then
   SECRET_KEY=$(openssl rand -hex 16)
