@@ -226,32 +226,46 @@ def index():
 @app.post("/vpn")
 def toggle_vpn():
     action = request.form.get("action")
-    if action == "start":
+    location_key = request.form.get("location")
+    locations = available_locations()
+
+    def _set_location() -> bool:
+        if not location_key:
+            return False
+
+        if location_key not in locations:
+            flash(f"Unknown location: {location_key}", "error")
+            return False
+
         try:
-            start_vpn()
-            flash("VPN enabled. Traffic now routes through WireGuard.", "success")
+            set_location(location_key)
+            flash(
+                f"VPN location switched to {locations[location_key]['label']}", "success"
+            )
+            return True
         except LocationSwitchError as err:
             flash(str(err), "error")
-    elif action == "stop":
+        except Exception as exc:  # noqa: BLE001
+            flash(f"Unexpected error: {exc}", "error")
+
+        return False
+
+    if action == "stop":
         stop_vpn()
         flash("VPN disabled. Traffic now routes directly to the internet.", "warning")
+        _set_location()
+    elif action == "start":
+        if not location_key or _set_location():
+            try:
+                start_vpn()
+                flash("VPN enabled. Traffic now routes through WireGuard.", "success")
+            except LocationSwitchError as err:
+                flash(str(err), "error")
+    elif action == "switch":
+        _set_location()
     else:
         flash("Unknown action", "error")
 
-    return redirect(url_for("index"))
-
-
-@app.post("/location")
-def change_location():
-    location_key = request.form.get("location")
-    try:
-        set_location(location_key)
-        locations = available_locations()
-        flash(f"VPN location switched to {locations[location_key]['label']}", "success")
-    except LocationSwitchError as err:
-        flash(str(err), "error")
-    except Exception as exc:  # noqa: BLE001
-        flash(f"Unexpected error: {exc}", "error")
     return redirect(url_for("index"))
 
 
