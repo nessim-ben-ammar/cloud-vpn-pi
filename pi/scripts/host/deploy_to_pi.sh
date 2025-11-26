@@ -13,6 +13,7 @@ CONFIG_PATH="$PI_DIR/config.sh"
 WEB_DIR="$PI_DIR/../web"
 REMOTE_SCRIPTS_DIR="~/scripts"
 REMOTE_WEB_DIR="~/vpn-web"
+REMOTE_CONFIG_DIR="$WG_REMOTE_CONFIG_DIR"
 
 # Check if we're accidentally running on Pi
 if [ -f /proc/device-tree/model ] && grep -q "Raspberry Pi" /proc/device-tree/model 2>/dev/null; then
@@ -62,14 +63,14 @@ echo "🔧 Copying scripts and config to Pi..."
 scp -i "$KEY" -P "$PORT" "$PI_PI_DIR"/*.sh "$CONFIG_PATH" "$USER@$HOST:$REMOTE_SCRIPTS_DIR/"
 ssh -i "$KEY" -p "$PORT" "$USER@$HOST" "chmod +x $REMOTE_SCRIPTS_DIR/*.sh"
 
-# Check if WireGuard config file exists
-if [ -f "$WG_CONFIG_SOURCE" ]; then
-    echo "🔧 Copying WireGuard config to Pi..."
-    scp -i "$KEY" -P "$PORT" "$WG_CONFIG_SOURCE" "$USER@$HOST:~/"
-    ssh -i "$KEY" -p "$PORT" "$USER@$HOST" "sudo mkdir -p /etc/wireguard && sudo mv ~/$(basename $WG_CONFIG_SOURCE) $WG_CONFIG_DEST"
+# Copy all WireGuard configs to the Pi so they can be swapped later
+if [ -d "$WG_CONFIGS_DIR" ] && compgen -G "$WG_CONFIGS_DIR/*.conf" > /dev/null; then
+    echo "🔧 Copying WireGuard configs to Pi..."
+    ssh -i "$KEY" -p "$PORT" "$USER@$HOST" "mkdir -p $REMOTE_CONFIG_DIR"
+    scp -i "$KEY" -P "$PORT" "$WG_CONFIGS_DIR"/*.conf "$USER@$HOST:$REMOTE_CONFIG_DIR/"
 else
-    echo "⚠️  WireGuard config not found at $WG_CONFIG_SOURCE"
-    echo "Please place your WireGuard config file there first"
+    echo "⚠️  No WireGuard configs found in $WG_CONFIGS_DIR"
+    echo "Add at least one config file named <location>.conf before deploying."
     exit 1
 fi
 

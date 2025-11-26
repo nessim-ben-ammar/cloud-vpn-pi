@@ -1,17 +1,41 @@
 #!/bin/bash
 
-SERVER_IP=$(terraform -chdir=../iac output -raw instance_public_ip)
-# Endpoint can be the Global Accelerator DNS, a static IP, or the instance's public IP
-VPN_ENDPOINT=$(terraform -chdir=../iac output -raw vpn_endpoint)
-SERVER="ubuntu@$SERVER_IP"
 SSH_KEY="../iac/ssh_keys/oci-instance-ssh-key"
 
-if [ -z "$1" ]; then
-  echo "Usage: $0 <client-name>"
+if [ $# -lt 2 ]; then
+  echo "Usage: $0 <location> <client-name>"
+  echo "Example: $0 frankfurt alice-phone"
   exit 1
 fi
 
-CLIENT_NAME="$1"
+LOCATION="$1"
+CLIENT_NAME="$2"
+
+get_output_value() {
+  local output_name="$1"
+  local location="$2"
+  python - <<'PY' "$output_name" "$location"
+import json
+import subprocess
+import sys
+
+output_name, location = sys.argv[1], sys.argv[2]
+data = json.loads(subprocess.check_output([
+    "terraform", "-chdir=../iac", "output", "-json", output_name
+]))
+
+if location not in data:
+    sys.stderr.write(f"Unknown location '{location}'. Available: {', '.join(sorted(data))}\n")
+    sys.exit(1)
+
+print(data[location])
+PY
+}
+
+SERVER_IP=$(get_output_value "instance_public_ips" "$LOCATION")
+# Endpoint can be the Global Accelerator DNS, a static IP, or the instance's public IP
+VPN_ENDPOINT=$(get_output_value "vpn_endpoints" "$LOCATION")
+SERVER="ubuntu@$SERVER_IP"
 
 # Execute everything remotely over SSH
 ssh -i "$SSH_KEY" $SERVER "sudo bash -s" <<EOF
@@ -81,7 +105,11 @@ chown ubuntu:ubuntu /home/ubuntu/\${CLIENT_NAME}.conf
 EOF
 
 # Copy config back to host
-scp -i "$SSH_KEY" $SERVER:/home/ubuntu/${CLIENT_NAME}.conf .
+OUTPUT_DIR="configs/$LOCATION"
+mkdir -p "$OUTPUT_DIR"
+scp -i "$SSH_KEY" $SERVER:/home/ubuntu/${CLIENT_NAME}.conf "$OUTPUT_DIR/"
 
 # Clean up temporary file on server
 ssh -i "$SSH_KEY" $SERVER "rm -f /home/ubuntu/${CLIENT_NAME}.conf"
+
+echo "Client config saved to $OUTPUT_DIR/${CLIENT_NAME}.conf"

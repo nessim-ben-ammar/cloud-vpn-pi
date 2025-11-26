@@ -1,12 +1,29 @@
 #!/bin/bash
 
 # Upload previously archived client configuration files to the server.
-# Usage: restore_configs.sh [archive]
+# Usage: restore_configs.sh <location> [archive]
 
-SERVER_IP=$(terraform -chdir=../iac output -raw instance_public_ip)
-SERVER="ubuntu@$SERVER_IP"
+if [ -z "$1" ]; then
+  echo "Usage: $0 <location> [archive]"
+  exit 1
+fi
+
+LOCATION="$1"
 SSH_KEY="../iac/ssh_keys/oci-instance-ssh-key"
-ARCHIVE="${1:-wireguard-backup.tar.gz}"
+ARCHIVE="${2:-wireguard-backup-$LOCATION.tar.gz}"
+
+SERVER_IP=$(python - <<'PY' "$LOCATION"
+import json, subprocess, sys
+location = sys.argv[1]
+data = json.loads(subprocess.check_output(["terraform", "-chdir=../iac", "output", "-json", "instance_public_ips"]))
+if location not in data:
+    sys.stderr.write(f"Unknown location '{location}'. Available: {', '.join(sorted(data))}\n")
+    sys.exit(1)
+print(data[location])
+PY
+)
+
+SERVER="ubuntu@$SERVER_IP"
 
 if [ ! -f "$ARCHIVE" ]; then
   echo "Archive $ARCHIVE not found"

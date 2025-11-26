@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import filecmp
 import os
 import shlex
 import shutil
@@ -37,15 +38,21 @@ def _read_config_variable(variable: str, fallback: str) -> str:
     return output.stdout.strip() or fallback
 
 
-def load_runtime_config() -> Dict[str, str]:
+def load_runtime_config() -> Dict[str, object]:
     wg_interface = _read_config_variable("WG_INTERFACE", "wg0")
     lan_interface = _read_config_variable("LAN_INTERFACE", "eth0")
     dns_upstream = _read_config_variable("UPSTREAM_DNS_SERVER", "8.8.8.8")
+    config_archive = Path(_read_config_variable("WG_CONFIG_ARCHIVE", "/etc/wireguard/configs"))
+    active_location_file = Path(
+        _read_config_variable("WG_ACTIVE_LOCATION_FILE", "/etc/wireguard/current_location")
+    )
 
     return {
         "wg_interface": wg_interface,
         "lan_interface": lan_interface,
         "dns_upstream": dns_upstream,
+        "config_archive": config_archive,
+        "active_location_file": active_location_file,
     }
 
 
@@ -54,8 +61,10 @@ RUNTIME_CONFIG = load_runtime_config()
 WG_INTERFACE = RUNTIME_CONFIG["wg_interface"]
 LAN_INTERFACE = RUNTIME_CONFIG["lan_interface"]
 ACTIVE_CONFIG = Path(f"/etc/wireguard/{WG_INTERFACE}.conf")
+CONFIG_ARCHIVE = RUNTIME_CONFIG["config_archive"]
+ACTIVE_LOCATION_FILE = RUNTIME_CONFIG["active_location_file"]
 
-LOCATIONS: Dict[str, Dict[str, str]] = {
+LEGACY_LOCATIONS: Dict[str, Dict[str, str]] = {
     "frankfurt": {
         "label": "Frankfurt",
         "config": os.environ.get("WG_FRANKFURT_CONFIG", "/etc/wireguard/wg0-frankfurt.conf"),
@@ -69,6 +78,35 @@ LOCATIONS: Dict[str, Dict[str, str]] = {
 }
 
 
+def _slug_to_label(slug: str) -> str:
+    return " ".join(part.capitalize() for part in slug.replace("_", "-").split("-"))
+
+
+def load_locations() -> Dict[str, Dict[str, str]]:
+    if not CONFIG_ARCHIVE.exists():
+        return {}
+
+    locations: Dict[str, Dict[str, str]] = {}
+    for config_file in sorted(CONFIG_ARCHIVE.glob("*.conf")):
+        key = config_file.stem
+        label = _slug_to_label(key)
+        locations[key] = {
+            "label": label,
+            "config": str(config_file),
+            "description": f"WireGuard config for {label}",
+        }
+
+    return locations
+
+
+def available_locations() -> Dict[str, Dict[str, str]]:
+    locations = load_locations()
+    if locations:
+        return locations
+
+    return LEGACY_LOCATIONS
+
+
 class LocationSwitchError(Exception):
     pass
 
@@ -79,11 +117,20 @@ def vpn_is_active() -> bool:
 
 
 def current_location() -> str:
+    if ACTIVE_LOCATION_FILE.exists():
+        saved = ACTIVE_LOCATION_FILE.read_text(encoding="utf-8").strip()
+        if saved:
+            return saved
+
+    locations = available_locations()
+
     if ACTIVE_CONFIG.exists():
-        active_target = ACTIVE_CONFIG.resolve()
-        for key, data in LOCATIONS.items():
-            if Path(data["config"]).resolve() == active_target:
-                return key
+        for key, data in locations.items():
+            try:
+                if filecmp.cmp(ACTIVE_CONFIG, Path(data["config"]), shallow=False):
+                    return key
+            except FileNotFoundError:
+                continue
     return "unknown"
 
 
@@ -125,13 +172,15 @@ def stop_vpn() -> None:
 
 
 def set_location(location_key: str) -> None:
-    if location_key not in LOCATIONS:
+    locations = available_locations()
+
+    if location_key not in locations:
         raise LocationSwitchError(f"Unknown location: {location_key}")
 
-    location_config = Path(LOCATIONS[location_key]["config"])
+    location_config = Path(locations[location_key]["config"])
     if not location_config.exists():
         raise LocationSwitchError(
-            f"Config for {LOCATIONS[location_key]['label']} not found at {location_config}"
+            f"Config for {locations[location_key]['label']} not found at {location_config}"
         )
 
     was_active = vpn_is_active()
@@ -141,6 +190,8 @@ def set_location(location_key: str) -> None:
     ACTIVE_CONFIG.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy(location_config, ACTIVE_CONFIG)
     _ensure_permissions(ACTIVE_CONFIG)
+    ACTIVE_LOCATION_FILE.write_text(location_key, encoding="utf-8")
+    _ensure_permissions(ACTIVE_LOCATION_FILE)
 
     if was_active:
         start_vpn()
@@ -158,13 +209,15 @@ def get_status() -> Dict[str, str]:
         "location": location,
         "wg_interface": WG_INTERFACE,
         "lan_interface": LAN_INTERFACE,
+        "config_archive": str(CONFIG_ARCHIVE),
+        "active_location_file": str(ACTIVE_LOCATION_FILE),
     }
 
 
 @app.route("/")
 def index():
     status = get_status()
-    return render_template("index.html", status=status, locations=LOCATIONS)
+    return render_template("index.html", status=status, locations=available_locations())
 
 
 @app.post("/vpn")
@@ -187,7 +240,8 @@ def change_location():
     location_key = request.form.get("location")
     try:
         set_location(location_key)
-        flash(f"VPN location switched to {LOCATIONS[location_key]['label']}", "success")
+        locations = available_locations()
+        flash(f"VPN location switched to {locations[location_key]['label']}", "success")
     except LocationSwitchError as err:
         flash(str(err), "error")
     except Exception as exc:  # noqa: BLE001

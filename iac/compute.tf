@@ -58,7 +58,7 @@ locals {
 resource "oci_core_instance" "cloud_vpn_instance" {
   availability_domain = var.frankfurt_availability_domain
   compartment_id      = oci_identity_compartment.cloud_vpn_cmp.id
-  display_name        = "cloud-vpn-${var.frankfurt_region}-instance"
+  display_name        = "cloud-vpn-${var.frankfurt_region}-gateway"
   shape               = local.frankfurt_shape
 
   create_vnic_details {
@@ -84,7 +84,7 @@ resource "oci_core_instance" "cloud_vpn_instance_marseille" {
   provider            = oci.marseille
   availability_domain = var.marseille_availability_domain
   compartment_id      = oci_identity_compartment.cloud_vpn_cmp.id
-  display_name        = "cloud-vpn-${var.marseille_region}-instance"
+  display_name        = "cloud-vpn-${var.marseille_region}-gateway"
   shape               = local.marseille_shape
 
   shape_config {
