@@ -20,12 +20,6 @@
             endpoints.
           </p>
         </div>
-        <div
-          class="status-chip {{ 'online' if status.status == 'active' else 'offline' }}"
-        >
-          <span class="dot"></span>
-          {{ 'VPN Enabled' if status.status == 'active' else 'VPN Disabled' }}
-        </div>
       </header>
 
       {% with messages = get_flashed_messages(with_categories=true) %} {% if
@@ -38,84 +32,55 @@
       {% endif %} {% endwith %}
 
       <form method="post" action="{{ url_for('toggle_vpn') }}">
-        <section class="grid">
-          <article class="card">
-            <header>
-              <h2>VPN Status</h2>
+        <article class="card">
+          <header class="card-header">
+            <div>
+              <h2>Connection</h2>
               <p class="hint">
-                Current WireGuard state on interface
-                <strong>{{ status.wg_interface }}</strong>.
+                Swap between VPN endpoints stored at
+                <code class="path">{{ status.config_archive }}</code> or route
+                directly without WireGuard.
               </p>
-            </header>
-            <dl class="details">
-              <div>
-                <dt>State</dt>
-                <dd
-                  class="pill {{ 'success' if status.status == 'active' else 'muted' }}"
-                >
-                  {{ status.status|capitalize }}
-                </dd>
-              </div>
-              <div>
-                <dt>Location</dt>
-                <dd>
-                  {% if status.location in locations %} {{
-                  locations[status.location].label }} {% else %}
-                  <span class="pill muted">Unknown</span>
-                  {% endif %}
-                </dd>
-              </div>
-            </dl>
-
-            <div class="actions">
-              {% if status.status == 'active' %}
-              <button
-                class="button ghost"
-                name="action"
-                value="stop"
-                type="submit"
-              >
-                Disable VPN
-              </button>
-              {% else %}
-              <button
-                class="button primary"
-                name="action"
-                value="start"
-                type="submit"
-              >
-                Enable VPN
-              </button>
-              {% endif %}
             </div>
-          </article>
+            <div
+              class="status-chip {{ 'online' if status.status == 'active' else 'offline' }}"
+            >
+              <span class="dot"></span>
+              {{ 'VPN Enabled' if status.status == 'active' else 'VPN Disabled' }}
+            </div>
+          </header>
 
-          <article class="card">
-            <header>
-              <h2>VPN Location</h2>
-              <p class="hint">
-                Swap between the configs stored at
-                <code class="path">{{ status.config_archive }}</code>. The service
-                restarts automatically when switching.
-              </p>
-            </header>
+          <div class="stack">
+            <label class="option no-vpn">
+              <input
+                type="radio"
+                name="location"
+                value="none"
+                {% if status.status != 'active' %}checked{% endif %}
+                required
+              />
+              <div>
+                <div class="option-title">No VPN (Direct connection)</div>
+                <p class="option-desc">Send traffic without WireGuard routing.</p>
+              </div>
+            </label>
+
             {% if locations %}
-            <div class="stack">
-              {% for key, data in locations.items() %}
-              <label class="option">
-                <input type="radio" name="location" value="{{ key }}" {% if
-                status.location == key %}checked{% endif %}>
-                <div>
-                  <div class="option-title">{{ data.label }}</div>
-                  {# description removed by request #}
-                  <code class="path">{{ data.config }}</code>
-                </div>
-              </label>
-              {% endfor %}
-              <button class="button" type="submit" name="action" value="switch">
-                Apply Location
-              </button>
-            </div>
+            {% for key, data in locations.items() %}
+            <label class="option">
+              <input
+                type="radio"
+                name="location"
+                value="{{ key }}"
+                {% if status.status == 'active' and status.location == key %}checked{% endif %}
+                required
+              />
+              <div>
+                <div class="option-title">{{ data.label }}</div>
+                <code class="path">{{ data.config }}</code>
+              </div>
+            </label>
+            {% endfor %}
             {% else %}
             <p class="hint">
               No configs found. Ensure your WireGuard files (e.g.,
@@ -124,8 +89,18 @@
               or refresh.
             </p>
             {% endif %}
-          </article>
-        </section>
+
+            <button
+              class="button primary"
+              type="submit"
+              id="apply-button"
+              name="action"
+              value="apply"
+            >
+              Apply selection
+            </button>
+          </div>
+        </article>
       </form>
 
       <footer class="footer">
@@ -135,5 +110,29 @@
         </p>
       </footer>
     </div>
+
+    <script>
+      const radioButtons = document.querySelectorAll('input[name="location"]');
+      const applyButton = document.getElementById('apply-button');
+
+      function syncButtonStyle() {
+        const selected = document.querySelector('input[name="location"]:checked');
+        if (!selected || !applyButton) return;
+
+        if (selected.value === 'none') {
+          applyButton.classList.add('danger');
+          applyButton.classList.remove('primary');
+        } else {
+          applyButton.classList.add('primary');
+          applyButton.classList.remove('danger');
+        }
+      }
+
+      radioButtons.forEach((radio) => {
+        radio.addEventListener('change', syncButtonStyle);
+      });
+
+      syncButtonStyle();
+    </script>
   </body>
 </html>
