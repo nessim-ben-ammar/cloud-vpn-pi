@@ -88,20 +88,51 @@ DNSMASQ_EOF
 
 echo "✅ dnsmasq DHCP + DNS configuration created"
 
-# Configure Pi's static IP (ensure it's static)
-echo "🔧 Configuring Pi's static IP..."
-cat > /etc/dhcpcd.conf << DHCPCD_EOF
-# dhcpcd configuration for Pi Gateway
+# Convert dotted-decimal subnet mask to CIDR prefix length
+mask_to_prefix() {
+    local mask=$1
+    local prefix=0
+    local octet
 
-# Static IP configuration for $LAN_INTERFACE
-interface $LAN_INTERFACE
-static ip_address=$PI_IP/24
-static routers=$ROUTER_IP
-static domain_name_servers=$PI_IP
+    IFS=. read -r o1 o2 o3 o4 <<< "$mask"
+    for octet in "$o1" "$o2" "$o3" "$o4"; do
+        while [ $octet -gt 0 ]; do
+            prefix=$((prefix + (octet & 1)))
+            octet=$((octet >> 1))
+        done
+    done
 
-DHCPCD_EOF
+    echo "$prefix"
+}
 
-echo "✅ Static IP configuration updated"
+echo "🔧 Configuring Pi's static IP via NetworkManager..."
+if ! command -v nmcli >/dev/null 2>&1; then
+    echo "❌ NetworkManager (nmcli) is not installed. Please install it before continuing."
+    exit 1
+fi
+
+SUBNET_PREFIX=$(mask_to_prefix "$SUBNET_MASK")
+
+# Find an existing connection bound to the LAN interface or create one
+LAN_CONN_NAME=$(nmcli -t -f NAME,DEVICE connection show --active | awk -F: -v iface="$LAN_INTERFACE" '$2 == iface {print $1; exit}')
+if [ -z "$LAN_CONN_NAME" ]; then
+    LAN_CONN_NAME=$(nmcli -t -f NAME,DEVICE connection show | awk -F: -v iface="$LAN_INTERFACE" '$2 == iface {print $1; exit}')
+fi
+
+if [ -z "$LAN_CONN_NAME" ]; then
+    LAN_CONN_NAME="${LAN_INTERFACE}-static"
+    echo "ℹ️  No existing NetworkManager connection for $LAN_INTERFACE. Creating $LAN_CONN_NAME..."
+    nmcli connection add type ethernet ifname "$LAN_INTERFACE" con-name "$LAN_CONN_NAME" ipv4.method manual ipv4.addresses "$PI_IP/$SUBNET_PREFIX" ipv4.gateway "$ROUTER_IP" ipv4.dns "$PI_IP" ipv6.method ignore connection.autoconnect yes
+else
+    echo "ℹ️  Updating NetworkManager connection '$LAN_CONN_NAME' for $LAN_INTERFACE..."
+    nmcli connection modify "$LAN_CONN_NAME" ipv4.method manual ipv4.addresses "$PI_IP/$SUBNET_PREFIX" ipv4.gateway "$ROUTER_IP" ipv4.dns "$PI_IP" ipv6.method ignore connection.autoconnect yes
+fi
+
+echo "🔄 Restarting NetworkManager connection '$LAN_CONN_NAME' to apply changes..."
+nmcli connection down "$LAN_CONN_NAME" 2>/dev/null || true
+nmcli connection up "$LAN_CONN_NAME"
+
+echo "✅ Static IP configuration applied via NetworkManager"
 
 # Enable and start dnsmasq
 echo "🚀 Starting dnsmasq service..."
