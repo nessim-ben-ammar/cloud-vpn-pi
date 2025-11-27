@@ -16,6 +16,7 @@ scripts/
 │   ├── setup_fail2ban.sh
 │   ├── setup_wireguard.sh
 │   ├── setup_gateway.sh
+│   ├── setup_unbound.sh
 │   └── setup_dnsmasq.sh
 └── README.md
 ```
@@ -28,7 +29,10 @@ All scripts use centralized configuration from `config.sh`. Key settings:
 - **WireGuard Configuration**: Interface name plus per-location configs stored in `../clients/configs/<location>-<device>.conf`. The deploy script copies every config to the Pi at `$WG_REMOTE_CONFIG_DIR`, `setup_wireguard.sh` syncs them into `$WG_CONFIG_ARCHIVE` (default `/etc/wireguard/configs`), records the active site in `$WG_ACTIVE_LOCATION_FILE`, and activates the location specified (defaults to `$WG_DEFAULT_LOCATION`).
 - **Network Configuration**: IP addresses and DHCP range (Pi hands out leases)
 - **fail2ban Configuration**: Ban times, retry limits
-- **DNS Configuration**: Upstream DNS server used by the Pi resolver
+- **DNS Configuration**: dnsmasq always forwards to the local Unbound resolver
+  on `127.0.0.1#5335`. Unbound switches upstreams automatically: it uses the
+  VPN-provided DNS when WireGuard is active, and falls back to
+  `UPSTREAM_DNS_SERVER` (default `1.1.1.1`) when the VPN is disabled.
 
 Edit `config.sh` to customize for your environment.
 
@@ -64,12 +68,13 @@ Edit `config.sh` to customize for your environment.
 2. **Individual components:**
    ```bash
    cd pi/
-   sudo ./install_packages.sh
-   sudo ./setup_fail2ban.sh
-    sudo ./setup_wireguard.sh frankfurt
-   sudo ./setup_gateway.sh
-   sudo ./setup_dnsmasq.sh
-   ```
+    sudo ./install_packages.sh
+    sudo ./setup_fail2ban.sh
+     sudo ./setup_wireguard.sh frankfurt
+    sudo ./setup_gateway.sh
+    sudo ./setup_unbound.sh
+    sudo ./setup_dnsmasq.sh
+    ```
 
 3. **Operational commands:**
 

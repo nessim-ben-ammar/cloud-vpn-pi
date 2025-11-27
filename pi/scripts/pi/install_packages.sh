@@ -29,7 +29,8 @@ apt install -y \
     iptables-persistent \
     fail2ban \
     resolvconf \
-    dnsmasq
+    dnsmasq \
+    unbound
 
 # Clean up
 echo "🧹 Cleaning up..."

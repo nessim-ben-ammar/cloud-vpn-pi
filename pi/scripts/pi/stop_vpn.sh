@@ -23,9 +23,6 @@ else
     exit 1
 fi
 
-DNSMASQ_CONF="/etc/dnsmasq.conf"
-UPSTREAM_DNS="${UPSTREAM_DNS_SERVER:-8.8.8.8}"
-
 echo "🔧 Switching Pi gateway from VPN to normal internet..."
 echo "====================================================="
 echo ""
@@ -55,16 +52,10 @@ echo "✅ iptables updated for direct internet routing"
 echo "inactive" > "${WG_STATE_FILE:-/etc/wireguard/state}"
 chmod 600 "${WG_STATE_FILE:-/etc/wireguard/state}"
 
-# 3. Update dnsmasq DNS to use normal internet DNS
-echo "🔄 Updating dnsmasq DNS to normal internet..."
-if grep -q "^server=" "$DNSMASQ_CONF"; then
-    # Replace the first server= line to avoid duplicates
-    sed -i "0,/^server=.*/{s#^server=.*#server=$UPSTREAM_DNS#}" "$DNSMASQ_CONF"
-else
-    echo "server=$UPSTREAM_DNS" >> "$DNSMASQ_CONF"
-fi
-systemctl restart dnsmasq
-echo "✅ dnsmasq updated to use upstream DNS $UPSTREAM_DNS"
+# 3. Point Unbound back to the non-VPN upstream resolver
+echo "🔄 Updating Unbound to use non-VPN upstream DNS..."
+bash "$(dirname "$0")/update_unbound_upstream.sh"
+echo "✅ Unbound updated to use upstream DNS"
 
 # 4. Save iptables rules
 echo "💾 Saving iptables rules..."
@@ -96,6 +87,6 @@ echo ""
 echo "The Pi continues to serve as:"
 echo "- DNS server for your network"
 echo "- Internet gateway for all devices"
-echo "- DNS server using upstream resolver ($UPSTREAM_DNS)"
+echo "- DNS server using upstream resolver (${UPSTREAM_DNS_SERVER:-})"
 echo ""
 echo "To re-enable VPN mode, run: ./start_vpn.sh or use the web UI"

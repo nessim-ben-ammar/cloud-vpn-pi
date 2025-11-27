@@ -36,6 +36,9 @@ echo "🔄 Updating iptables for VPN routing..."
 iptables -t nat -F POSTROUTING
 iptables -t nat -A POSTROUTING -o $WG_INTERFACE -j MASQUERADE
 
+echo "🔄 Pointing Unbound at VPN DNS servers..."
+bash "$(dirname "$0")/update_unbound_upstream.sh" vpn
+
 echo "✅ VPN started! Pi gateway now routes traffic through the VPN."
 
 echo "Current NAT rules:"
