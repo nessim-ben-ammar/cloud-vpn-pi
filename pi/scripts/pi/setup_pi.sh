@@ -37,6 +37,7 @@ echo ""
 ./setup_fail2ban.sh
 ./setup_wireguard.sh
 ./setup_gateway.sh
+./setup_unbound.sh
 ./setup_dnsmasq.sh
 
 echo ""

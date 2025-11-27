@@ -73,8 +73,8 @@ log-dhcp
 # Cache size
 cache-size=1000
 
-# Upstream DNS server(s) dnsmasq will forward to
-server=$UPSTREAM_DNS_SERVER
+# Upstream DNS server(s) dnsmasq will forward to (Unbound by default)
+server=${LOCAL_DNS_SERVER:-127.0.0.1#5335}
 
 # Don't forward plain names
 domain-needed

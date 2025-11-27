@@ -30,8 +30,10 @@ WG_STATE_FILE="/etc/wireguard/state"
 WG_INTERFACE="wg0"
 
 # DNS Configuration
-# Upstream resolver that dnsmasq forwards to while the Pi serves local DNS
-UPSTREAM_DNS_SERVER="192.168.2.1"
+# - LOCAL_DNS_SERVER is where dnsmasq forwards (Unbound on localhost by default)
+# - UPSTREAM_DNS_SERVER is the non-VPN resolver Unbound should use when VPN is off
+LOCAL_DNS_SERVER="127.0.0.1#5335"
+UPSTREAM_DNS_SERVER="1.1.1.1"
 DOMAIN_NAME="local"
 
 # Network Interface Configuration
